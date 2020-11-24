@@ -31,7 +31,7 @@ Rcpp::sourceCpp("helper-conley.cpp")
 #'
 #' @note could be speed up if you put the lapply within C++ code. I calculate the N^2 distances for each time period
 
-conley_ses <- function(X, e, coords, dist_cutoff, lag_cutoff, cores = 1, verbose = FALSE, id = NA, time = NA) {
+conley_ses <- function(X, e, coords, dist_cutoff, lag_cutoff, cores = 1, verbose = FALSE, id = NULL, time = NULL) {
 	
 	# Load multicore
 	if(cores > 1) library(parallel)
@@ -39,7 +39,7 @@ conley_ses <- function(X, e, coords, dist_cutoff, lag_cutoff, cores = 1, verbose
 	n <- nrow(X)
 	k <- ncol(X)
 	
-	panel <- !(missing(time) & missing(id))
+	panel <- !(is.null(id) | is.null(time))
 	if(!panel) print("No Panel dimension provided. Using just Spatial adjustment")
 	
 	# Spatial Correlation ------------------------------------------------------
