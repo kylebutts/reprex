@@ -12,13 +12,6 @@ library(RcppArmadillo)
 
 # setwd("")
 Rcpp::sourceCpp("helper-conley.cpp")
-library(tidyverse)
-library(Rcpp)
-library(RcppArmadillo)
-
-setwd("~/Documents/Projects/Spatial Spillover/")
-
-Rcpp::sourceCpp("helper-conley.cpp")
 
 
 #' Conley Spatial-HAC Variance-Covariance Matrix
