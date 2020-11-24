@@ -1,0 +1,52 @@
+\documentclass[11pt]{article}
+
+\title{\color{navyblue} Example Paper}
+\author{\normalsize Kyle Butts\\{\footnotesize Univ. of Colorado, Boulder}}
+\date{\footnotesize\today}
+
+% Include Theme
+\input{preamble.tex}
+
+% Set-up Bibliography
+% \addbibresource{references.bib}
+
+\begin{document}
+
+Oaxaca-Binder Estimator for Treatment Effect: 
+
+\textit{Patrick Kline - Oaxaca-Blinder as a Reweighting Estimator (2011)}
+
+\begin{enumerate}
+   \item Run regression on Untreated units to get $\hat{\beta}^0$
+   \[ 
+        Y_i = X_i \beta + \varepsilon_i    
+   \]
+
+   \item Predict counterfactual outcomes for Treated units
+   \[ 
+        \hat{Y}_i^0 = X_i \hat{\beta}^0
+   \]
+   
+   \item Treatment Effect is:
+    \[ 
+        \hat{\tau}_i = Y_i^1 - \hat{Y}_i^0 = Y_i^1 - X_i \hat{\beta}^0
+    \]
+
+    Can then aggregate to average treatment effect on treated
+\end{enumerate}
+
+
+\textbf{Advantages to Oaxaca-Blinder:}
+
+\begin{itemize}
+    \item Don't assume effects of covariates are the same after treatment, i.e. $\beta^1 = \beta^0$. This allows treatment effect heterogeneity based on $X_i$'s.
+    
+    You can explore heterogeneity in treatment effect
+    
+    \item Equivalent to Propensity score reweighting with linear probability model, so doubly-robust estimator.
+\end{itemize}
+
+
+
+
+\end{document}

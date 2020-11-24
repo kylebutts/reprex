@@ -1,0 +1,31 @@
+.DS_Store
+
+## R files
+.RData
+.RHistory
+.Rapp.history
+.Rproj.user/*
+
+## Core latex/pdflatex auxiliary files:
+/latex/.vscode
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+*.bcf
+.*.lb
+*.blg
+*.bbl
+*.bdg_latexmk
+*.fdb_latexmk
+*.synctex.gz
+*.nav
+*.snm
+*.run.xml
