@@ -30,7 +30,6 @@ Rcpp::sourceCpp("helper-conley.cpp")
 #' @param time - nx1 vector of time variable (can be in any units)
 #'
 #' @note could be speed up if you put the lapply within C++ code. I calculate the N^2 distances for each time period
-
 conley_ses <- function(X, e, coords, dist_cutoff, lag_cutoff, cores = 1, verbose = FALSE, id = NULL, time = NULL) {
 	
 	# Load multicore
@@ -44,33 +43,38 @@ conley_ses <- function(X, e, coords, dist_cutoff, lag_cutoff, cores = 1, verbose
 	
 	# Spatial Correlation ------------------------------------------------------
 	
-	# Unique time indices
-	time_unique <- unique(time)
-	time_n <- length(time_unique)
-	
-	# For each time t, get XeeXh for that time 
-	if(cores == 1) {
-		XeeXhs <- lapply(time_unique, function(t) {
-			sub_X <- X[time == t, ]
-			sub_e <- e[time == t]
-			sub_coords <- coords[time == t, ]
-			n1 <- nrow(sub_X)
-			
-			XeeX_spatial(sub_coords, dist_cutoff, sub_X, sub_e, n, k)
-		})
+	if(panel) {
+		# Unique time indices
+		time_unique <- unique(time)
+		time_n <- length(time_unique)
+		
+		# For each time t, get XeeXh for that time 
+		if(cores == 1) {
+			XeeXhs <- lapply(time_unique, function(t) {
+				sub_X <- X[time == t, ]
+				sub_e <- e[time == t]
+				sub_coords <- coords[time == t, ]
+				n1 <- nrow(sub_X)
+				
+				XeeX_spatial(sub_coords, dist_cutoff, sub_X, sub_e, n1, k)
+			})
+		} else {
+			XeeXhs <- mclapply(time_unique, function(t) {
+				sub_X <- X[time == t, ]
+				sub_e <- e[time == t]
+				sub_coords <- coords[time == t, ]
+				n1 <- nrow(sub_X)
+				
+				XeeX_spatial(sub_coords, dist_cutoff, sub_X, sub_e, n1, k)
+			}, mc.cores = cores)
+		}
+		
+		# Reduce across time
+		XeeX_spatial <- Reduce("+",  XeeXhs)
 	} else {
-		XeeXhs <- mclapply(time_unique, function(t) {
-			sub_X <- X[time == t, ]
-			sub_e <- e[time == t]
-			sub_coords <- coords[time == t, ]
-			n1 <- nrow(sub_X)
-			
-			XeeX_spatial(sub_coords, dist_cutoff, sub_X, sub_e, n, k)
-		}, mc.cores = cores)
+		XeeX_spatial <- XeeX_spatial(coords, dist_cutoff, X, e, n, k)
 	}
 	
-	# Reduce across time
-	XeeX_spatial <- Reduce("+",  XeeXhs)
 	
 	
 	
