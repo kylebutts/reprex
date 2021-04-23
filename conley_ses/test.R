@@ -49,7 +49,7 @@ id = as.matrix(rep(1, nrow(wheatData)))
 X = as.matrix(cbind(1,wheatData$Wages))
 e = as.matrix(resid(wheatModel))
 
-meat <- XeeX_serial(time = time, id = id, cutoff = 3, X = X, e = e, k=2, kernel = "triangular")
+meat <- XeeX_serial(time = time, id = id, cutoff = 3, X = X, e = e, k=2)
 
 sqrt(diag(solve(t(X) %*% X) %*% meat %*% solve(t(X) %*% X)))
 
@@ -69,7 +69,7 @@ e <- m$residuals
 time <- df$year
 id <- df$FIPS
 n <- length(e)
-k <- ncol(M)
+k <- ncol(X)
 dist_cutoff <- 500
 lag_cutoff <- 5
 
@@ -82,8 +82,6 @@ sapply(SE, function(x) diag(sqrt(x))) %>% round(3)
 #     OLS     Spatial     Spatial_HAC
 # HDD 0.650   0.886       0.721
 # CDD 1.493   4.065       3.631
-
-
 
 
 

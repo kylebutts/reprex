@@ -21,42 +21,47 @@ Rcpp::sourceCpp("helper-conley.cpp")
 #' @param e - vector of residuals
 #' @param coords - nx2 matrix of lat and long (order doesn't matter)
 #' @param dist_cutoff - Cutoff distance in km for spatial correlation
-#' @param lag_cutoff - Cutoff time in units of your time variable for serial correlation
-#' @param verbose - if TRUE, prints out a lot of details
-#' @param id - nx1 vector of id variable
-#' @param time - nx1 vector of time variable (can be in any units)
+#' @param lag_cutoff - (optional if panel) Cutoff time in units of your time variable for serial correlation
+#' @param id - (optional if panel) nx1 vector of id variable
+#' @param time - (optional if panel) nx1 vector of time variable (can be in any units)
 #'
 #' @note could be speed up if you put the lapply within C++ code. I calculate the N^2 distances for each time period
-conley_ses <- function(X, e, coords, dist_cutoff, lag_cutoff = 0, verbose = FALSE, id = NULL, time = NULL) {
+conley_ses <- function(X, e, coords, dist_cutoff, lag_cutoff = 0, id = NULL, time = NULL) {
+	
+	X <- as.matrix(X)
+	coords <- as.matrix(coords)
+	e <- as.matrix(e)
 	
 	n <- nrow(X)
 	k <- ncol(X)
 	
 	panel <- !(is.null(id) | is.null(time))
 	if(!panel) print("No Panel dimension provided. Using just Spatial adjustment")
+	if(panel) {
+		time = as.matrix(time)
+		id = as.matrix(id)
+	}
 	
 	# Spatial Correlation ------------------------------------------------------
 	
 	if(panel) {
 		# Unique time indices
 		time_unique <- unique(time)
-		time_n <- length(time_unique)
 		
 		# For each time t, get XeeX_spatial for that time 
 		XeeXhs <- lapply(time_unique, function(t) {
 			sub_X <- as.matrix(X[time == t, ])
-			sub_e <- e[time == t]
-			sub_coords <- coords[time == t, ]
+			sub_e <- as.matrix(e[time == t])
+			sub_coords <- as.matrix(coords[time == t, ])
 			n1 <- nrow(sub_X)
 			
-			XeeX_spatial(M=sub_coords, cutoff=dist_cutoff, X=sub_X, e=sub_e, k=k)
+			XeeX_spatial(coords=sub_coords, cutoff=dist_cutoff, X=sub_X, e=sub_e, k=k)
 		})
-		
 		
 		# Reduce across time
 		XeeXh_spatial <- Reduce("+",  XeeXhs)
 	} else {
-		XeeXh_spatial <- XeeX_spatial(coords, dist_cutoff, X, e, n, k, dist_fn = "sh")
+		XeeXh_spatial <- XeeX_spatial(coords=coords, cutoff=dist_cutoff, X=X, e=e, k=k)
 	}
 	
 	
@@ -64,10 +69,10 @@ conley_ses <- function(X, e, coords, dist_cutoff, lag_cutoff = 0, verbose = FALS
 	
 	# Serial Correlation -------------------------------------------------------
 	
-	if(panel) XeeXh_serial <- XeeX_serial(time, id, lag_cutoff, X, e, k)
+	if(panel) XeeXh_serial <- XeeX_serial(time=time, id=id, cutoff=lag_cutoff, X=X, e=e, k=k)
 	
 	
-	# Heteroskedastic Correlation ----------------------------------------------
+	# Heteroskedastic Robust ---------------------------------------------------
 	
 	XeeXh_robust <- XeeX_robust(X, e, k)
 	
@@ -90,13 +95,13 @@ conley_ses <- function(X, e, coords, dist_cutoff, lag_cutoff = 0, verbose = FALS
 	# Return Variance-Covariance Matrix
 	if(panel) {
 		return(list(
-			"OLS" = V_robust,
+			"Robust" = V_robust,
 			"Spatial" = V_spatial,
 			"Spatial_HAC" = V_spatial_HAC
 		))
 	} else {
 		return(list(
-			"OLS" = V_robust,
+			"Robust" = V_robust,
 			"Spatial" = V_spatial
 		))
 	}
