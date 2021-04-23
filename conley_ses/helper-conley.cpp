@@ -31,15 +31,15 @@ double haversine_cpp(double lat1, double long1,
 	double the_terms = term1 + term2;
 	double delta_sigma = 2 * atan2(sqrt(the_terms), sqrt(1-the_terms));
 	double distance = radius * delta_sigma;
-	
+
 	/* if it is anything *but* km it is miles */
 	if(unit != "km"){
 		return(distance*0.621371);
 	}
-	
+
 	return(distance);
 }
-
+	
 // Distance Formula used by Solomon Hsiang -------------------------------------
 double sh_cpp(double lat1, double long1,
               double lat2, double long2) {
@@ -51,22 +51,20 @@ double sh_cpp(double lat1, double long1,
 
 // Cross-sectional spatial clustering ------------------------------------------
 
-//' Cross-sectional XeeX matrix 
-//' Lg because it doesn't store distance matrices
+//' Cross-sectional XeeX matrix spatial clustering
 //' 
 //' @param M - nx2 matrix of lat-long points 
 //' @param cutoff - cutoff distance in kilometers
 //' @param X - nxk model matrix from regression
 //' @param e - nx1 vector or residuals
-//' @param n1 - 
 //' @param k - number of covariates
 //' @param kernel - bartlett or any string "" for 0/1 Kernel
 //' @param dist_fn - Haversine or any string "" for other distance function. Use Haversine
 //  [[Rcpp::export]]
 arma::mat XeeX_spatial(arma::mat M, double cutoff,
-                    arma::mat X, arma::vec e, int n1, int k,
-                    std::string kernel="bartlett",
-                    std::string dist_fn="Haversine"){
+                    arma::mat X, arma::vec e, int k,
+                    std::string kernel = "bartlett",
+                    std::string dist_fn= "Haversine"){
 	
 	long long int nrow = M.n_rows;
 	
@@ -76,6 +74,7 @@ arma::mat XeeX_spatial(arma::mat M, double cutoff,
 	
 	for( long long int i = 0; i < nrow; i++ ){
 		for( long long int j = 0; j < nrow; j++ ){
+			
 			double d;
 			
 			// Distance Function
@@ -87,12 +86,12 @@ arma::mat XeeX_spatial(arma::mat M, double cutoff,
 			
 			if(d <= cutoff) {
 				// Kernel 
-				int K = (kernel == "bartlett") ? (1 - d / cutoff) : 1;
+				double K = (kernel == "bartlett") ? (1 - d / cutoff) : 1;
 				
-			
 				// Iteration (i,j): XeeXh += X_i' X_j e_i e_j K(d_ij)
-				// Formula from Robust Inference with Multi-way Clustering
-				XeeXh += (e[i] * e[j] * K) * (X.row(i).t() * X.row(j));
+				// Formula from Robust Inference with Multi-way Clustering, Eq. (2.12)
+				// second column p. 239 (note that X_i is Kx1 in their notation)
+				XeeXh += as_scalar(e[i] * e[j] * K) * (X.row(i).t() * X.row(j));
 			}
 		}
 	}
@@ -111,9 +110,10 @@ arma::mat XeeX_spatial(arma::mat M, double cutoff,
 //' @param X - nxk model matrix from regression
 //' @param e - nx1 vector or residuals
 //' @param k - number of covariates
+//' @param kernel - either uniform, K = 1, or triangular, K = 1 - (l/L+1)
 // [[Rcpp::export]]
 arma::mat XeeX_serial(arma::vec time, arma::vec id, double cutoff,
-                   arma::mat X, arma::vec e, int k){
+                   arma::mat X, arma::vec e, int k, std::string kernel = "uniform"){
 	
 	long long int nrow = time.n_elem;
 	
@@ -122,14 +122,19 @@ arma::mat XeeX_serial(arma::vec time, arma::vec id, double cutoff,
 	
 	for( long long int i = 0; i < nrow; i++ ){
 		for( long long int j = 0; j < nrow; j++ ) {
+			
 			double t_diff = abs(time[i] - time[j]);
 			bool same_id = id[i] == id[j];
 			
 			if(t_diff <= cutoff && same_id) {
+				
+				// uniform: K(i,j) = 1(t_i - t_j <= cutoff) * 1(id_i == id_j) 
+				// triangular: K(i,j) = 1(t_i - t_j <= cutoff) * 1(id_i == id_j) * (1 - l/(L+1))
+				double K = 1 - (t_diff / (cutoff + 1));
+				
 				// Iteration (i,j): XeeXh += X_i' X_j e_i e_j K(i,j)
-				// K(i,j) = 1(t_i - t_j <= cutoff) * 1(id_i == id_j)
 				// Formula from Robust Inference with Multi-way Clustering
-				XeeXh += (e[i] * e[j]) * (X.row(i).t() * X.row(j));
+				XeeXh += as_scalar(e[i] * e[j] * K) * (X.row(i).t() * X.row(j));
 			}
 		}
 	}
@@ -138,7 +143,24 @@ arma::mat XeeX_serial(arma::vec time, arma::vec id, double cutoff,
 }
 
 
+//' Create Variance-Covariance matrix of robust heteroskedastic matrix
+//' 
+//' @param X - nxk model matrix from regression
+//' @param e - nx1 vector or residuals
+//' @param k - number of covariates
+// [[Rcpp::export]]
+arma::mat XeeX_robust(arma::mat X, arma::vec e, int k){
+	
+	long long int nrow = e.n_elem;
+	arma::mat XeeXh(k, k, fill::zeros);
+	
+	for( long long int i = 0; i < nrow; i++ ){
+		// Iteration (i,i): XeeXh += X_i' X_i e_i e_i
+		// Formula from Robust Inference with Multi-way Clustering
+		XeeXh += as_scalar(e[i] * e[i]) * (X.row(i).t() * X.row(i));
+	}
+	
+	return XeeXh;
+}
 
-/*** R
-cli::cli_alert_success("Loaded function {.code XeeX_spatial} and {.code XeeX_serial}")
-*/
+
